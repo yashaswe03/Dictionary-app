@@ -1,33 +1,52 @@
-// script.js
 function searchWord() {
-  const word = document.getElementById('wordInput').value.trim();
-  const resultDiv = document.getElementById('result');
-  resultDiv.innerHTML = "";
+  const word = document.getElementById("wordInput").value.trim();
+  const resultDiv = document.getElementById("result");
+
+  resultDiv.innerHTML = ""; // Clear previous result
 
   if (!word) {
-    resultDiv.innerHTML = "<p>Please enter a word.</p>";
+    resultDiv.innerHTML = "<p class='error'>Please enter a word.</p>";
     return;
   }
 
-  fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+  const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`;
+
+  fetch(url)
     .then(response => {
       if (!response.ok) {
-        throw new Error("Word not found");
+        throw new Error("Word not found.");
       }
       return response.json();
     })
     .then(data => {
-      const definition = data[0].meanings[0].definitions[0].definition;
-      const partOfSpeech = data[0].meanings[0].partOfSpeech;
-      const phonetic = data[0].phonetic || "";
+      const entry = data[0];
+      const phonetics = entry.phonetics.find(p => p.audio) || {};
+      const meanings = entry.meanings;
 
-      resultDiv.innerHTML = `
-        <h2>${data[0].word} ${phonetic}</h2>
-        <p><strong>Part of Speech:</strong> ${partOfSpeech}</p>
-        <p><strong>Definition:</strong> ${definition}</p>
+      let html = `
+        <h2>${entry.word}</h2>
+        ${phonetics.text ? `<p><strong>Phonetics:</strong> ${phonetics.text}</p>` : ""}
+        ${phonetics.audio ? `<audio controls src="${phonetics.audio}"></audio>` : ""}
+        <h3>Definitions:</h3>
       `;
+
+      meanings.forEach(meaning => {
+        html += `<p><strong>${meaning.partOfSpeech}</strong></p>`;
+
+        meaning.definitions.slice(0, 3).forEach((def, i) => {
+          html += `
+            <div class="definition-block">
+              <p><strong>${i + 1}.</strong> ${def.definition}</p>
+              ${def.example ? `<p><em>Example:</em> "${def.example}"</p>` : ""}
+            </div>
+          `;
+        });
+      });
+
+      resultDiv.innerHTML = html;
     })
     .catch(error => {
-      resultDiv.innerHTML = `<p style="color:red;">${error.message}</p>`;
+      resultDiv.innerHTML = `<p class="error">${error.message}</p>`;
     });
 }
+
